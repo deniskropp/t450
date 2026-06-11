@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""
+Demo: Evolve a HumorDNA vector using kickga (GAlib-inspired) to maximize "laugh score".
+
+This is the canonical self-referential integration example:
+- KickLang ecosystem already has evolving HumorDNA (humor_dna-0.9.2.kick, HumorForge, Iterative Laugh Team Gen2)
+- We treat the numeric preference vector as a GA genome (exactly like GA1DArrayGenome in GAlib)
+- Fitness is derived from the same heuristics that score jokes in the HumorForge logic
+- Result can be emitted as a fresh ⫻humor:dna:block ready to drop into a .kick file
+
+Run:
+    python -m kickga.examples.evolve_humor_dna
+    # or after PYTHONPATH=.
+    python kickga/examples/evolve_humor_dna.py
+"""
+
+import sys
+from pathlib import Path
+
+# Make package importable when run directly from the worktree
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from kickga import (
+    KickVectorGenome,
+    GASimpleGA,
+    make_humor_dna_fitness,
+    emit_kick_dna_block,
+    load_kick_ga_spec,
+    create_ga_from_kick,
+)
+
+
+# A seed DNA very close to the real artifacts in the user's projects (t321, t314 humor_dna)
+SEED_DNA = {
+    "version": "0.9.2",
+    "core_preferences": {
+        "meta_ai_irony_literal_roasts": 9,
+        "kicklang_command_wordplay": 10,
+        "multi_agent_deadlock": 9,
+        "short_setups": 10,
+        "tight_punchlines": 10,
+        "direct_kicklang_command_usage": 10,
+        "logic_loop_recursion": 12,
+        "animal_swarm_logic_loops": 13,
+        "monkey_typewriter_banana_chaos": 14,
+        "iterative_laugh_team_deadlock": 13,
+        "deutsche_query_ironie": 12,
+        "animal_puns": 8,
+        "tech_fails": 7,
+        "self_deprecating": 9,
+    },
+    "evolution_history": [
+        "v0.1: baseline meta-AI irony",
+        "v0.9.2: deutsche KI-Ironie + swarm recursion (pre-GA)",
+    ],
+    "top_theme": "Auffassung-Annahme-Auslegung Absurdität in animal-swarm KickLang",
+}
+
+
+def main():
+    print("=== kickga + KickLang : Evolving Humor DNA ===\n")
+
+    # --- 1. Pure Python path (explicit) ---
+    print("--- Path A: Explicit Python GA construction ---")
+    fitness = make_humor_dna_fitness()
+
+    # Build initial pop biased around the seed
+    keys = list(SEED_DNA["core_preferences"].keys())
+    base_vec = [float(SEED_DNA["core_preferences"][k]) for k in keys]
+    bounds = [(0.0, 16.0)] * len(base_vec)
+
+    initial_pop = []
+    for i in range(36):
+        v = [round(b[0] + (b[1]-b[0]) * (0.3 + 0.7*__import__('random').random()), 3) for b in bounds]
+        # inject seed bias into ~1/4 of pop
+        if i < 9:
+            for j in range(len(base_vec)):
+                v[j] = round(0.65 * base_vec[j] + 0.35 * v[j], 3)
+        g = KickVectorGenome(vector=v, bounds=bounds, name=f"humor_dna_{i}")
+        initial_pop.append(g)
+
+    ga = GASimpleGA(initial_pop, fitness_fn=fitness, maximize=True)
+    ga.populationSize(36)
+    ga.pCrossover = 0.88
+    ga.pMutation = 0.018
+    ga.nGenerations = 55
+
+    stats = ga.evolve()
+
+    best = ga.best()
+    print(f"Generations run: {ga.generation}")
+    print(f"Best laugh_score: {best.score:.3f}" if best and best.score else "no best")
+    print(f"Avg at end: {stats.avg_score:.2f}")
+
+    if best:
+        print("\nEvolved DNA vector (first 8 loci):")
+        print("  ", best.vector[:8])
+
+        kick_block = emit_kick_dna_block(best, version="ga-1.0")
+        print("\n--- Emitted KickLang block (paste into .kick or dna file) ---")
+        print(kick_block[:1200] + "\n...")
+
+    # --- 2. KickLang declarative spec path ---
+    print("\n--- Path B: Load from KickLang-style spec string ---")
+    spec = """
+# ⫻ga:experiment — evolve humor DNA for higher swarm laughter
+⫻ga:experiment
+id: EvolveHumorDNA_KickGA_v1
+genome: vector
+pop_size: 32
+generations: 40
+p_crossover: 0.9
+p_mutation: 0.02
+fitness: humor_dna
+vector_length: 14
+# bounds_low: [0,0,...]  (optional)
+"""
+
+    ga2 = create_ga_from_kick(spec, seed=SEED_DNA)
+    ga2.evolve(35)
+    best2 = ga2.best()
+    print(f"Spec-driven best laugh_score: {best2.score:.3f}" if best2 and best2.score else "n/a")
+
+    if best2:
+        print("\nSpec-driven evolved KickLang block:")
+        print(emit_kick_dna_block(best2, version="ga-spec-1.0")[:900])
+
+    print("\n=== Integration complete. Use the emitted blocks in your KickLang codex / humor modules. ===")
+    print("Next ideas: evolve whole ⫻plan/team lists, evolve OCS weight vectors, evolve pipeline stage order.")
+
+
+if __name__ == "__main__":
+    main()

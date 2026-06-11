@@ -1,0 +1,44 @@
+# ⫻ga:experiment — GAlib-style evolution of KickLang Humor DNA
+# This file is both human-readable ritual spec and machine-loadable by kickga.
+#
+# Part of the GAlib + KickLang integration in t450.
+# Load with: kickga.kick_bridge.load_kick_ga_spec(...) or create_ga_from_kick(...)
+
+⫻ga:experiment
+id: EvolveHumorDNA_v1.0
+genome: vector
+pop_size: 42
+generations: 70
+p_crossover: 0.87
+p_mutation: 0.019
+fitness: humor_dna
+vector_length: 14
+# Optional explicit bounds (low/high per locus)
+# bounds_low: [0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+# bounds_high: [16,16,16,16,16,16,16,16,16,16,16,16,16,16]
+
+⫻ga:notes
+purpose: "Raise laugh density and KickLang-native irony recursion using classic GA operators"
+seed: "humor_dna-0.9.2 + HumorForge 2.0 core_preferences"
+emit_as: "⫻humor:dna:block"
+integration: "GAlib concepts (GASimpleGA, 1DArrayGenome, roulette + tournament, gaussian mutation)"
+
+⫻ga:target_traits
+- higher monkey_typewriter_banana_chaos + animal_swarm_logic_loops (swarm laughter engine)
+- tighter short_setups + tight_punchlines without losing recursion depth
+- balanced deutsche_query_ironie for bilingual callback power
+- protect multi_agent_deadlock (controlled chaos, not total deadlock)
+
+# After evolution, take the best genome and emit via emit_kick_dna_block()
+# The resulting block can be dropped straight into:
+#   - core/humor_dna-*.kick
+#   - a new versioned HumorForge session state
+#   - an OCS ⫻data/var payload for dynamic weighting in a meta-playbook
+#
+# Example emission (produced by kickga):
+# ⫻humor:dna:block
+# id: ...
+# core_preferences:
+#   ...
+# laugh_score: 13.8
+# # emitted by kickga (GAlib-style)
