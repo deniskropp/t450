@@ -47,6 +47,7 @@ fitness: humor_dna
 - kicklang-evolution-predictor (forecast) complements kickga (search)
 - HumorForge DNA scoring = canonical fitness oracle
 - OCS TAS flow consumes the evolved weights / lists / blocks
+- UnifiedPlaybookSchema (TAS/PTAS/Anchor + 16 events) now directly drives kickga genomes + emission
 - t20 compiler + Single_Kick parser remain source of truth for syntax; kickga is consumer/producer
 
 ⫻future
@@ -54,3 +55,5 @@ fitness: humor_dna
 - Multi-population island model for swarm co-agency
 - Real GAlib native bridge (see native/README.md)
 - Online micro-GA inside running KickLang interpreter loop
+- Full round-trip: evolve TAS params in kickga → emit ⫻playbook:cycle → feed OCS-meta-playbook-controller / KickGuard state machine
+- Python <-> TS schema validation (generate JSON Schema from playbook_schema.py and compare to the TS discriminated union)

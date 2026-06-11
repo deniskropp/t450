@@ -105,6 +105,7 @@ A minimal stub lives in `native/` (to be added) showing the GAlib include + GA1D
 - `kicklang-evolution-predictor` skill → forecasting / TAS roadmap. kickga → actual population search.
 - HumorForge DNA + scoring → the primary fitness oracle today.
 - OCS / TAS / meta-playbook → the consumers of the evolved artifacts (weights, lists, blocks).
+- **Unified Playbook Schema** (via `/unified-playbook-schema` + `kickga/playbook_schema.py`) → TAS/PTAS/Anchor + 16 event types are now first-class evolvable dimensions and emittable artifacts.
 - Single_Kick parser + t20 compiler → can be extended later with first-class `⫻ga:*` productions or a GA stage in the planner.
 
 ## Next Steps (Ideas)
@@ -114,6 +115,37 @@ A minimal stub lives in `native/` (to be added) showing the GAlib include + GA1D
 - Online GA inside a running KickLang swarm (micro-populations between sessions).
 - Persist populations as `⫻state:ga_population` blocks.
 - Wire into MCP skill so `⫻cmd/exec kickga-evolve` becomes a first-class OCS action.
+
+## TAS / Playbook Schema Integration (v0.2+)
+
+kickga is now wired to the canonical **Unified Playbook Schema** (delivered by `/unified-playbook-schema`).
+
+- `kickga/playbook_schema.py` = Python dataclass mirror of the TS schema (TAS, PTAS, Anchor, all 16 `PlaybookEvent` types, `create_playbook_event`, Role/ConsentStatus/etc enums).
+- New fitness: `tas_coherence_fitness` / `make_tas_coherence_fitness()` — evolves 8-dimensional vectors representing:
+  `coherence_target`, `anchor_stability`, `consent_weight`, `resequence_tendency`, `ethical_threshold`, `somatic_valence`, `pipeline_efficiency`, `drift_tolerance`
+- New emitters:
+  - `emit_tas_block()`, `emit_ptas_block()`, `emit_anchor_block()`
+  - `emit_full_playbook_cycle(genome)` → produces a complete `⫻playbook:cycle` containing domain objects + the full event stream (TAS_EXTRACTED ... CYCLE_SEALED)
+- `KickGAConfig` + `⫻ga:experiment` now understand `fitness: tas_coherence` (and optional `tas_keys`).
+- The main demo (`evolve_humor_dna.py` Path C) runs a full TAS evolution and emits a ready-to-consume playbook cycle.
+
+These artifacts are designed to be consumed by:
+- OCS protocol layers
+- KickGuard (consent + coherence gates)
+- KickFlow (pipeline construction from PTAS)
+- EmbodiedPipe (anchor + somatic signals)
+- Any state machine using the discriminated `PlaybookEventType` union.
+
+Example spec snippet:
+```kick
+⫻ga:experiment
+id: EvolveTASForMetaPlaybook
+genome: vector
+fitness: tas_coherence
+vector_length: 8
+tas_keys: [coherence_target, anchor_stability, consent_weight, resequence_tendency, ...]
+generations: 45
+```
 
 ---
 

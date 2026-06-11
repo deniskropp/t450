@@ -22,6 +22,20 @@ from .genome import KickVectorGenome, KickListGenome, KickBlockGenome, GAGenome
 from .ga import GASimpleGA
 from .fitness import make_humor_dna_fitness, make_vector_target_fitness
 
+# Playbook schema wiring (task 4)
+try:
+    from .playbook_schema import (
+        TAS, PTAS, Anchor, PlaybookEvent,
+        tas_from_genome_vector, ptas_from_tas, anchor_from_ptas,
+        create_playbook_event,
+        to_json as playbook_to_json,
+    )
+except Exception:
+    TAS = PTAS = Anchor = PlaybookEvent = None  # type: ignore
+    tas_from_genome_vector = ptas_from_tas = anchor_from_ptas = None  # type: ignore
+    create_playbook_event = None  # type: ignore
+    playbook_to_json = None  # type: ignore
+
 
 DIRECTIVE_RE = re.compile(r"^⫻([\w:/-]+)$")
 KV_RE = re.compile(r"^([A-Za-z0-9_.-]+):\s*(.*)$")
@@ -37,11 +51,13 @@ class KickGAConfig:
     generations: int = 60
     p_crossover: float = 0.85
     p_mutation: float = 0.025
-    fitness: str = "humor_dna"           # humor_dna | target | custom
+    fitness: str = "humor_dna"           # humor_dna | target | tas_coherence | custom
     target: Optional[List[float]] = None
     vector_length: int = 14
     vector_bounds: Optional[List[tuple]] = None
     seed: Optional[int] = None
+    # TAS / Playbook wiring (task 4)
+    tas_keys: Optional[List[str]] = None
     extra: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -127,6 +143,7 @@ def load_kick_ga_spec(source: str) -> KickGAConfig:
         p_mutation=float(blk.get("p_mutation", blk.get("pm", 0.025))),
         fitness=blk.get("fitness", blk.get("objective", "humor_dna")),
         vector_length=int(blk.get("vector_length", blk.get("length", 14))),
+        tas_keys=blk.get("tas_keys") or blk.get("tas_dimensions"),
     )
 
     if "target" in blk:
@@ -164,6 +181,13 @@ def build_initial_population(cfg: KickGAConfig, seed_dna: Optional[Dict[str, Any
             if len(vals) < cfg.vector_length:
                 vals += [7.0] * (cfg.vector_length - len(vals))
             base = [float(v) for v in vals][: cfg.vector_length]
+
+        # TAS mode: use sensible defaults for coherence/anchor etc. (0.6-0.9 range)
+        if cfg.fitness == "tas_coherence":
+            # Prefer 8-locus TAS vectors unless user overrode length
+            if cfg.vector_length == 14:  # common humor default
+                cfg.vector_length = 8
+            base = [round(0.65 + _rnd.random() * 0.22, 3) for _ in range(cfg.vector_length)]
 
         bounds = cfg.vector_bounds or [(0.0, 16.0)] * cfg.vector_length
         for _ in range(n):
@@ -216,6 +240,10 @@ def create_ga_from_kick(source_or_cfg: str | KickGAConfig, seed: Optional[Dict[s
         fitness = make_humor_dna_fitness()
     elif cfg.fitness == "target" and cfg.target:
         fitness = make_vector_target_fitness(cfg.target)
+    elif cfg.fitness == "tas_coherence":
+        # Use the new TAS/playbook coherence fitness (task 4)
+        from .fitness import make_tas_coherence_fitness
+        fitness = make_tas_coherence_fitness(keys=cfg.tas_keys)
     else:
         # default to humor style (most fun for KickLang context)
         fitness = make_humor_dna_fitness()
@@ -278,3 +306,153 @@ def emit_kick_dna_block(
 def emit_evolution_history_entry(ga: GASimpleGA, label: str = "ga-session") -> str:
     s = ga.statistics()
     return f"v{ga.generation}: {label} best={round(s.best_score,2)} avg={round(s.avg_score,2)} (kickga)"
+
+
+# =============================================================================
+# Playbook Schema / TAS emitters (task 4: wire into OCS + meta-playbook)
+# =============================================================================
+
+def emit_tas_block(tas: "TAS", directive: str = "⫻data/tas") -> str:
+    """Emit a canonical ⫻data/tas block from a TAS dataclass (or dict)."""
+    if isinstance(tas, dict):
+        t = tas
+    else:
+        t = tas.to_dict() if hasattr(tas, "to_dict") else tas
+    lines = [directive]
+    lines.append(f"id: {t.get('id')}")
+    lines.append(f"raw_input: {t.get('raw_input', '')[:120]}")
+    lines.append(f"atomic_intent: {t.get('atomic_intent', '')[:140]}")
+    lines.append("signals:")
+    for k, v in t.get("signals", {}).items():
+        lines.append(f"  {k}: {v}")
+    lines.append(f"extracted_by: {t.get('extracted_by', 'KickForge')}")
+    lines.append(f"timestamp: {t.get('timestamp')}")
+    lines.append("# source: kickga + UnifiedPlaybookSchema")
+    return "\n".join(lines)
+
+
+def emit_ptas_block(ptas: "PTAS", directive: str = "⫻data/ptas") -> str:
+    if isinstance(ptas, dict):
+        p = ptas
+    else:
+        p = ptas.to_dict() if hasattr(ptas, "to_dict") else ptas
+    lines = [directive]
+    lines.append(f"id: {p.get('id')}")
+    lines.append(f"source_tas_id: {p.get('source_tas_id')}")
+    lines.append(f"purified_intent: {p.get('purified_intent', '')[:140]}")
+    lines.append("constraints:")
+    for c in p.get("constraints", []):
+        lines.append(f"  - {c}")
+    ea = p.get("ethical_alignment", {})
+    lines.append(f"ethical_alignment: {ea.get('status', 'aligned')}")
+    if ea.get("notes"):
+        lines.append(f"  notes: {ea['notes']}")
+    lines.append(f"consent_status: {p.get('consent_status')}")
+    lines.append(f"ready_for_pipeline: {p.get('ready_for_pipeline')}")
+    lines.append("# source: kickga (KickGuard-purified)")
+    return "\n".join(lines)
+
+
+def emit_anchor_block(anchor: "Anchor", directive: str = "⫻data/anchor") -> str:
+    if isinstance(anchor, dict):
+        a = anchor
+    else:
+        a = anchor.to_dict() if hasattr(anchor, "to_dict") else anchor
+    lines = [directive]
+    lines.append(f"anchor_id: {a.get('anchor_id')}")
+    lines.append(f"ptas_id: {a.get('ptas_id')}")
+    lines.append(f"stability_score: {a.get('stability_score')}")
+    lines.append(f"pipe_channel: {a.get('pipe_channel')}")
+    sc = a.get("somatic_context", {})
+    lines.append("somatic_context:")
+    for k, v in sc.items():
+        lines.append(f"  {k}: {v}")
+    if a.get("ritual_frame"):
+        lines.append(f"ritual_frame: {a['ritual_frame']}")
+    lines.append("# source: kickga (EmbodiedPipe)")
+    return "\n".join(lines)
+
+
+def emit_playbook_event_block(
+    event: Union["PlaybookEvent", Dict[str, Any]],
+    directive: str = "⫻playbook:event",
+    indent: str = "",
+) -> str:
+    """Emit a single playbook event in KickLang-friendly form.
+
+    Use indent="  " (or "    ") for nested output inside a cycle.
+    """
+    if isinstance(event, dict):
+        e = event
+    else:
+        e = event.to_dict() if hasattr(event, "to_dict") else event
+
+    prefix = indent
+    lines = [f"{prefix}{directive}" if directive else ""]
+    lines.append(f"{prefix}  event_id: {e.get('event_id')}")
+    lines.append(f"{prefix}  event_type: {e.get('event_type')}")
+    lines.append(f"{prefix}  source: {e.get('source')}")
+    lines.append(f"{prefix}  timestamp: {e.get('timestamp')}")
+    payload = e.get("payload", {})
+    lines.append(f"{prefix}  payload:")
+    for k, v in payload.items():
+        val = v if not isinstance(v, (dict, list)) else str(v)
+        lines.append(f"{prefix}    {k}: {val}")
+    # drop leading empty line if no directive was wanted
+    return "\n".join(line for line in lines if line is not None and line != "")
+
+
+def emit_full_playbook_cycle(
+    genome: GAGenome,
+    version: str = "ga-tas-1.0",
+) -> str:
+    """
+    Given a best-of-run TAS-parameter genome, simulate the full happy-path
+    playbook cycle (TAS_EXTRACTED → ... → CYCLE_SEALED) and emit a rich
+    KickLang block containing the domain objects + event stream.
+
+    This is the primary integration point between kickga evolution and
+    OCS / UnifiedPlaybookSchema consumers.
+    """
+    if not isinstance(genome, KickVectorGenome):
+        return "# emit_full_playbook_cycle requires a KickVectorGenome (TAS vector)"
+
+    # Use the simulation helper from fitness (which already pulls in schema)
+    from .fitness import simulate_playbook_cycle_from_vector  # local import to avoid circulars at load
+    cycle = simulate_playbook_cycle_from_vector(genome.vector)
+
+    if "error" in cycle:
+        return f"# {cycle['error']}"
+
+    tas_d = cycle["tas"]
+    ptas_d = cycle["ptas"]
+    anchor_d = cycle["anchor"]
+    events = cycle["events"]
+
+    lines: List[str] = ["⫻playbook:cycle"]
+    lines.append(f"id: tas_cycle_{version}_{genome.name or 'evolved'}")
+    lines.append(f"version: {version}")
+    lines.append(f"ga_score: {genome.score}")
+    lines.append("")
+
+    lines.append("# --- Domain Objects (canonical) ---")
+    lines.append(emit_tas_block(tas_d))
+    lines.append("")
+    lines.append(emit_ptas_block(ptas_d))
+    lines.append("")
+    lines.append(emit_anchor_block(anchor_d))
+    lines.append("")
+
+    lines.append("# --- Event Stream (16-type schema) ---")
+    lines.append("⫻playbook:events")
+    for ev in events:
+        # Use indent for clean nested KickLang-style output
+        block = emit_playbook_event_block(ev, directive="event:", indent="  ")
+        lines.append(block)
+    lines.append("")
+
+    lines.append(f"# cycle_summary: {cycle.get('cycle_summary')}")
+    lines.append("# emitted by kickga (wired to UnifiedPlaybookSchema)")
+    lines.append(f"# best_vector[:4]: { [round(x,3) for x in genome.vector[:4]] }")
+
+    return "\n".join(lines)

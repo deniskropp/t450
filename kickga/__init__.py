@@ -33,12 +33,36 @@ from .kick_bridge import (
     create_ga_from_kick,
     build_initial_population,
     emit_evolution_history_entry,
+    # Playbook / TAS emitters (task 4)
+    emit_tas_block,
+    emit_ptas_block,
+    emit_anchor_block,
+    emit_playbook_event_block,
+    emit_full_playbook_cycle,
 )
 from .fitness import (
     FitnessFunction,
     make_vector_target_fitness,
     make_humor_dna_fitness,
     humor_dna_fitness,
+    make_tas_coherence_fitness,
+    tas_coherence_fitness,
+    simulate_playbook_cycle_from_vector,
+)
+
+from .playbook_schema import (
+    Role, ConsentStatus, EthicalAlignment, CoherenceStatus,
+    TAS, PTAS, Anchor,
+    PlaybookEvent, create_playbook_event,
+    tas_from_genome_vector, ptas_from_tas, anchor_from_ptas,
+    # All 16 payload types for direct construction when needed
+    TasExtractedPayload, ConsentGrantedPayload, ConsentDeniedPayload,
+    AnchorCreatedPayload, PipelineReadyPayload,
+    ResonanceHighPayload, ResonanceLowPayload,
+    SignalTransmittedPayload, ArtifactCreatedPayload,
+    CoherenceHighPayload, CoherenceLowPayload,
+    ResequenceToAnchorPayload, ResequenceToPipelinePayload, ResequenceToDecisionPayload,
+    NoResequenceNeededPayload, CycleSealedPayload,
 )
 
 __all__ = [
@@ -60,8 +84,28 @@ __all__ = [
     "create_ga_from_kick",
     "build_initial_population",
     "emit_evolution_history_entry",
+    "emit_tas_block",
+    "emit_ptas_block",
+    "emit_anchor_block",
+    "emit_playbook_event_block",
+    "emit_full_playbook_cycle",
     "FitnessFunction",
     "make_vector_target_fitness",
     "make_humor_dna_fitness",
     "humor_dna_fitness",
+    "make_tas_coherence_fitness",
+    "tas_coherence_fitness",
+    "simulate_playbook_cycle_from_vector",
+    # Playbook schema (UnifiedPlaybookSchema Python mirror)
+    "Role", "ConsentStatus", "EthicalAlignment", "CoherenceStatus",
+    "TAS", "PTAS", "Anchor",
+    "PlaybookEvent", "create_playbook_event",
+    "tas_from_genome_vector", "ptas_from_tas", "anchor_from_ptas",
+    "TasExtractedPayload", "ConsentGrantedPayload", "ConsentDeniedPayload",
+    "AnchorCreatedPayload", "PipelineReadyPayload",
+    "ResonanceHighPayload", "ResonanceLowPayload",
+    "SignalTransmittedPayload", "ArtifactCreatedPayload",
+    "CoherenceHighPayload", "CoherenceLowPayload",
+    "ResequenceToAnchorPayload", "ResequenceToPipelinePayload", "ResequenceToDecisionPayload",
+    "NoResequenceNeededPayload", "CycleSealedPayload",
 ]

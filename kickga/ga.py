@@ -129,6 +129,14 @@ class GASimpleGA:
         self.nGenerations: int = 100
         self.pReplacement: float = 1.0  # fraction replaced each gen (1.0 = full generational)
 
+        # Termination control
+        # - nGenerations is the hard maximum (respected by evolve()).
+        # - terminate_on_convergence (default True) enables the plateau early-stop
+        #   inside done(). Set it to False on a GA instance when you specifically
+        #   want the full number of generations to run (common for TAS/playbook
+        #   parameter evolution where you want to observe long-term dynamics).
+        self.terminate_on_convergence: bool = True
+
         self.selector = Selectors.roulette
         self.scaling = Scaling.none
 
@@ -210,6 +218,11 @@ class GASimpleGA:
         self.stats.update(self._pop)
 
     def evolve(self, ngen: Optional[int] = None) -> GAStatistics:
+        """Run up to ngen (or self.nGenerations) generations.
+
+        Early termination can occur if self.terminate_on_convergence is True
+        and the best score has plateaued (see done()).
+        """
         gens = ngen if ngen is not None else self.nGenerations
         for _ in range(gens):
             if self.done():
@@ -218,9 +231,22 @@ class GASimpleGA:
         return self.stats
 
     def done(self) -> bool:
+        """Return True if we should stop.
+
+        Hard cap: generation count >= nGenerations.
+        Optional early stop: best-score plateau over recent history
+        (common once elitism protects a good individual).
+        """
         if self.generation >= self.nGenerations:
             return True
-        # Simple convergence: no improvement for several gens (GAlib has GAConvergenceTerminator)
+
+        if not self.terminate_on_convergence:
+            return False
+
+        # Simple convergence / stagnation detector.
+        # Because of elitism, best_score often becomes constant after a good
+        # solution is found. This causes the GA to stop even if nGenerations
+        # was set higher. Set terminate_on_convergence=False to ignore this.
         hist = self.stats.score_history
         if len(hist) >= 8:
             recent = hist[-8:]

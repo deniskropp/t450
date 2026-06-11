@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Humor DNA Evolution Prototype</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f9; }
+        #app { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        pre { background: #eee; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        button { padding: 10px 20px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; }
+        button:disabled { background-color: #ccc; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>Humor DNA Evolution</h1>
+        <p>This prototype simulates the `kickga` Humor DNA evolution process.</p>
+        <button id="evolveBtn">Run Evolution</button>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // --- Core Simulation Logic (Ported from Python kickga) ---
+
+        const IDEAL_DNA = {
+            "meta_ai_irony_literal_roasts": 11.0,
+            "kicklang_command_wordplay": 12.5,
+            "multi_agent_deadlock": 8.0,
+            "short_setups": 13.0,
+            "tight_punchlines": 13.5,
+            "direct_kicklang_command_usage": 11.0,
+            "logic_loop_recursion": 12.0,
+            "animal_swarm_logic_loops": 14.0,
+            "monkey_typewriter_banana_chaos": 13.5,
+            "iterative_laugh_team_deadlock": 12.0,
+            "deutsche_query_ironie": 11.5,
+            "animal_puns": 9.0,
+            "tech_fails": 8.5,
+            "self_deprecating": 10.0,
+        };
+
+        const keys = Object.keys(IDEAL_DNA);
+
+        function fitness(vec) {
+            let score = 7.0;
+            vec.forEach((val, i) => {
+                const k = keys[i];
+                const target = IDEAL_DNA[k];
+                const diff = Math.abs(val - target);
+                if (diff < 0.8) score += 1.4;
+                else if (diff < 1.8) score += 0.7;
+                else score -= Math.min(2.5, diff * 0.6);
+            });
+            return Math.max(2.0, Math.min(15.0, Math.round(score * 1000) / 1000));
+        }
+
+        function createGenome(vec = null) {
+            if (!vec) {
+                vec = keys.map(() => Math.random() * 16);
+            }
+            return { vector: vec, score: fitness(vec) };
+        }
+
+        // --- Evolution Loop ---
+        async function runEvolution() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Evolving...</p>';
+            
+            let pop = Array.from({length: 40}, () => createGenome());
+            
+            for (let gen = 0; gen < 50; gen++) {
+                // Sort by score
+                pop.sort((a, b) => b.score - a.score);
+                
+                // Keep best 50%
+                let nextPop = pop.slice(0, 20);
+                
+                // Crossover & Mutation
+                while (nextPop.length < 40) {
+                    let p1 = nextPop[Math.floor(Math.random() * 10)];
+                    let p2 = nextPop[Math.floor(Math.random() * 10)];
+                    
+                    let childVec = p1.vector.map((v, i) => Math.random() > 0.5 ? v : p2.vector[i]);
+                    // Mutate
+                    childVec = childVec.map(v => v + (Math.random() - 0.5) * 2);
+                    childVec = childVec.map(v => Math.max(0, Math.min(16, v)));
+                    
+                    nextPop.push(createGenome(childVec));
+                }
+                pop = nextPop;
+                
+                if (gen % 10 === 0) {
+                    resultsDiv.innerHTML = `<p>Generation ${gen}: Best Score = ${pop[0].score.toFixed(3)}</p>`;
+                    await new Promise(r => setTimeout(r, 10)); // Allow UI update
+                }
+            }
+            
+            const best = pop[0];
+            resultsDiv.innerHTML = `
+                <h2>Evolution Complete!</h2>
+                <p>Best Score: ${best.score.toFixed(3)}</p>
+                <pre>${JSON.stringify(best.vector.map(v => v.toFixed(2)), null, 2)}</pre>
+            `;
+        }
+
+        document.getElementById('evolveBtn').addEventListener('click', runEvolution);
+    </script>
+</body>
+</html>

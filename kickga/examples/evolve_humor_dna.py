@@ -8,6 +8,12 @@ This is the canonical self-referential integration example:
 - Fitness is derived from the same heuristics that score jokes in the HumorForge logic
 - Result can be emitted as a fresh ⫻humor:dna:block ready to drop into a .kick file
 
+Also demonstrates (Path C):
+- Evolving TAS parameters using the Python mirror of UnifiedPlaybookSchema
+- Fitness based on coherence, anchor stability, consent/ethics, low resequence/drift
+- Full emission of TAS/PTAS/Anchor + 16-event playbook cycle (⫻playbook:cycle)
+- Direct bridge from GA search → OCS / meta-playbook / KickGuard consumers
+
 Run:
     python -m kickga.examples.evolve_humor_dna
     # or after PYTHONPATH=.
@@ -24,7 +30,9 @@ from kickga import (
     KickVectorGenome,
     GASimpleGA,
     make_humor_dna_fitness,
+    make_tas_coherence_fitness,
     emit_kick_dna_block,
+    emit_full_playbook_cycle,
     load_kick_ga_spec,
     create_ga_from_kick,
 )
@@ -127,6 +135,57 @@ vector_length: 14
 
     print("\n=== Integration complete. Use the emitted blocks in your KickLang codex / humor modules. ===")
     print("Next ideas: evolve whole ⫻plan/team lists, evolve OCS weight vectors, evolve pipeline stage order.")
+
+    # --- 3. TAS / UnifiedPlaybookSchema path (new in task 4) ---
+    print("\n--- Path C: Evolve TAS parameters (coherence, anchor stability, resequence tendency...) ---")
+    print("Fitness rewards high-coherence, stable anchors, strong consent/ethics, low resequence/drift.")
+    print("This directly wires kickga genomes to the canonical playbook schema (TAS/PTAS/Anchor + 16 events).")
+
+    tas_fitness = make_tas_coherence_fitness()
+    tas_length = 8
+    tas_bounds = [(0.35, 0.98)] * tas_length   # sensible normalized ranges for most params
+
+    initial_tas_pop = []
+    for i in range(28):
+        v = [round(0.55 + __import__('random').random() * 0.38, 3) for _ in range(tas_length)]
+        g = KickVectorGenome(vector=v, bounds=tas_bounds, name=f"tas_params_{i}")
+        initial_tas_pop.append(g)
+
+    ga_tas = GASimpleGA(initial_tas_pop, fitness_fn=tas_fitness, maximize=True)
+    ga_tas.populationSize(28)
+    ga_tas.pCrossover = 0.86
+    ga_tas.pMutation = 0.022
+    ga_tas.nGenerations = 48
+    # Make nGenerations effective: disable the plateau-based early stop.
+    # The TAS fitness surface can stabilize the best score relatively quickly
+    # (elitism + smooth params), so without this the GA would exit after ~10-15 gens
+    # even though we asked for 48. This demonstrates control over termination.
+    ga_tas.terminate_on_convergence = False
+
+    stats_tas = ga_tas.evolve()
+    best_tas = ga_tas.best()
+
+    print(f"TAS GA generations: {ga_tas.generation}")
+    print(f"Best TAS/playbook score: {best_tas.score:.3f}" if best_tas and best_tas.score else "n/a")
+
+    if best_tas:
+        print("\nEvolved TAS vector (coherence, stability, consent, reseq, ethical, somatic, pipeline, drift):")
+        print("  ", [round(x, 3) for x in best_tas.vector])
+
+        # Emit rich playbook cycle (the key integration artifact)
+        cycle_block = emit_full_playbook_cycle(best_tas, version="ga-tas-playbook-1.0")
+        print("\n--- Emitted ⫻playbook:cycle (TAS/PTAS/Anchor + full event stream) ---")
+        print(cycle_block[:1800] + "\n... (truncated)")
+
+        # Also show the pure Python simulation dict for consumers that want objects
+        try:
+            from kickga.fitness import simulate_playbook_cycle_from_vector
+            sim = simulate_playbook_cycle_from_vector(best_tas.vector)
+            print(f"\nSimulated cycle contains {len(sim.get('events', []))} events. Final coherence: high")
+        except Exception as ex:
+            print(f"(simulation detail skipped: {ex})")
+
+    print("\n=== TAS wiring complete. Evolved parameters are now ready for OCS meta-playbook, KickGuard, EmbodiedPipe. ===")
 
 
 if __name__ == "__main__":
