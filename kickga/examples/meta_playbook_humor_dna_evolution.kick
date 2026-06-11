@@ -1,0 +1,98 @@
+# Meta-Playbook wrapper around HumorDNA GA evolution
+# This file demonstrates how the classic HumorDNA GA spec can be
+# elevated into a full 20-step Meta-Playbook using KickForge/KickFlow/KickGuard.
+#
+# It keeps backward compatibility with the simple ⫻ga:experiment parser
+# while adding role consolidation, payload tracing, ethics, and
+# post-evolution playbook event emission.
+
+module<HumorDNAEvolutionMetaPlaybook> v2.1
+TITLE HumorDNA Genetic Evolution wrapped in Full Meta-Playbook
+DESCRIPTION Uses the three-agent core to extract a "laugh TAS", delegate GA evolution of core_preferences to kickga, apply KickGuard coherence/ethics on the resulting DNA, emit as ⫻humor:dna:block, and produce a minimal playbook cycle for downstream OCS consumers.
+roleOrchestrator PLAN HumorDNAEvolutionMetaPlaybook user_brief swarm_context run_flags
+
+roleKickForge PLAN ForgeCore
+  CONSOLIDATE GPTASe puTASe TAS-EXTRACT TAS-PURIFY TAS-VALIDATE
+
+roleKickFlow PLAN FlowCore
+  CONSOLIDATE Lyra FizzLaMetta TAS-SEQUENCE TAS-DELEGATE kickga_humor_evolver emit_dna_block
+
+roleKickGuard PLAN GuardCore
+  CONSOLIDATE Dima SystemMonitor WePlan KickLaMetta coherence_on_laugh
+
+schema user_brief { goal: string, target_traits: string[] }
+schema swarm_context { current_dna_version: string, existing_traits: string[] }
+schema run_flags { generations: number, pop_size: number, emit_playbook_events: bool }
+
+Stage1ForgeLaughTAS:
+  roleKickForge EXTRACT user_brief swarm_context
+  LINK Stage1ForgeLaughTAS, produces, ⫻data/tas
+
+Stage2ForgePurifyLaughIntent:
+  roleKickForge PURIFY ⫻data/tas policy_constraints
+  LINK Stage2ForgePurifyLaughIntent, produces, ⫻data/ptas
+
+Stage3FlowDesignEvolution:
+  roleKickFlow PLAN EvolutionPipeline ⫻data/ptas run_flags
+  LINK Stage3FlowDesignEvolution, produces, ⫻data/spec
+
+# The actual GA delegation (re-uses existing kickga machinery)
+Stage4KickgaHumorEvolution:
+  roleKickFlow DELEGATE kickga_evolve ⫻data/spec run_flags
+  LINK Stage4KickgaHumorEvolution, produces, evolved_humor_vector
+  LINK Stage4KickgaHumorEvolution, produces, ⫻data/ga_result
+
+Stage5EmitHumorDNABlock:
+  roleKickFlow EMIT HumorDNABlock evolved_humor_vector
+  LINK Stage5EmitHumorDNABlock, produces, ⫻humor:dna:block
+
+Stage6KickGuardLaughCoherence:
+  role Dima CHECK laugh_coherence evolved_humor_vector
+  LINK Stage6KickGuardLaughCoherence, produces, decision_token
+  IF decision_token.coherence < 0.75 THEN ⫻cmd/halt "Evolved DNA lost too much recursion depth or irony"
+
+Stage7SystemMonitorDiversity:
+  role SystemMonitor CHECK diversity + deadlock_risk evolved_humor_vector
+  LINK Stage7SystemMonitorDiversity, produces, monitor_report
+
+Stage8WePlanDNAHistory:
+  role WePlan PLAN evolution_history ⫻data/ga_result
+  LINK Stage8WePlanDNAHistory, produces, ⫻data/spec
+
+Stage9EmitPlaybookEvents:
+  IF run_flags.emit_playbook_events THEN
+    roleKickGuard EMIT PlaybookEventStream ⫻data/tas evolved_humor_vector monitor_report
+    LINK Stage9EmitPlaybookEvents, produces, ⫻data/playbook_events
+
+Stage10SynthesizeInsight:
+  role Orchestrator SYNTHESIZE ⫻data/tas ⫻data/ptas evolved_humor_vector
+  LINK Stage10SynthesizeInsight, produces, ⫻data/insight
+
+Stage11ReviewAndFinalize:
+  role KickForge+KickFlow+KickGuard REVIEW ⫻data/insight ⫻humor:dna:block
+  LINK Stage11ReviewAndFinalize, produces, final_evolved_dna_artifact
+
+# Embedded classic GA spec (still fully loadable by current kickga parser)
+⫻ga:experiment
+id: EvolveHumorDNA_MetaPlaybook_v2.1
+genome: vector
+pop_size: 36
+generations: 55
+p_crossover: 0.88
+p_mutation: 0.018
+fitness: humor_dna
+vector_length: 14
+# The rest of the spec (seed, traits) lives in the Python demo or can be injected
+
+payload_flow:
+  user_brief → ⫻data/tas → ⫻data/ptas → evolved_humor_vector → ⫻humor:dna:block + (optional) ⫻data/playbook_events → final_evolved_dna_artifact
+
+logic:
+  ⫻logic/if run_flags.emit_playbook_events THEN Stage9EmitPlaybookEvents
+  ⫻logic/loop until decision_token.passed AND monitor_report.diversity_ok DO Stage6 + Stage7
+  ⫻logic/error "irony_collapse" RECOVER increase_animal_swarm OR ⫻cmd/halt
+
+directives:
+  ⫻cmd/exec HumorDNAEvolutionMetaPlaybook
+  ⫻cmd/mode "Creative"
+  ⫻cmd/halt "coherence|diversity|ethics"

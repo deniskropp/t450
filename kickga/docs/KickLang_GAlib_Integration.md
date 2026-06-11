@@ -136,7 +136,7 @@ These artifacts are designed to be consumed by:
 - EmbodiedPipe (anchor + somatic signals)
 - Any state machine using the discriminated `PlaybookEventType` union.
 
-Example spec snippet:
+Example spec snippet (simple GA form):
 ```kick
 ⫻ga:experiment
 id: EvolveTASForMetaPlaybook
@@ -146,6 +146,21 @@ vector_length: 8
 tas_keys: [coherence_target, anchor_stability, consent_weight, resequence_tendency, ...]
 generations: 45
 ```
+
+### New Meta-Playbook Examples (in kickga/examples/)
+
+The directory now contains full KickLang Meta-Playbook modules (v2.1) that wrap GA evolution:
+
+- `tas_coherence_meta_playbook.kick` — Complete 3-agent pipeline: KickForge TAS extraction → KickFlow delegates to kickga GA (using `tas_coherence_fitness`) → KickGuard coherence gate + Anchor + emission of all 16 `PlaybookEvent` types + final `⫻playbook:cycle`. Directly compatible with `kickga.playbook_schema` and the TS `UnifiedPlaybookSchema`.
+- `meta_playbook_humor_dna_evolution.kick` — Elevates the classic HumorDNA GA into a full Meta-Playbook with role consolidation, ethics on laugh coherence, optional playbook event emission, and backward-compatible embedded `⫻ga:experiment`.
+- `playbook_cycle_after_ga.kick` — Focused post-GA stage: reconstructs TAS/PTAS/Anchor from any evolved vector, emits the canonical 16-event stream, and seals a `⫻playbook:cycle`. Can be chained after any kickga run.
+
+These files follow the guidelines from the `/kicklang-meta-playbook` skill and can be used as:
+- Human-readable ritual/affirmation specs
+- Input to future full KickLang compilers or OCS orchestrators
+- Documentation of how the Python kickga library maps to typed playbook artifacts
+
+Load the embedded `⫻ga:experiment` blocks with the existing `create_ga_from_kick()` for immediate execution. The richer `module<...>` structure is ready for higher-level orchestration.
 
 ---
 

@@ -1,0 +1,73 @@
+# Playbook Cycle Emission after GA run
+# Demonstrates the post-evolution phase of the Meta-Playbook:
+# Take any evolved vector (HumorDNA or TAS params), synthesize
+# TAS/PTAS/Anchor, emit the full 16-event stream + ⫻playbook:cycle.
+
+module<PlaybookCycleAfterGA> v2.1
+TITLE Post-GA Playbook Cycle Synthesis and Emission
+DESCRIPTION After kickga has produced an evolved vector (via tas_coherence_fitness or humor_dna_fitness), this module grounds it in the UnifiedPlaybookSchema, creates Anchor via EmbodiedPipe simulation, emits canonical PlaybookEvents, and produces a sealed ⫻playbook:cycle artifact. Can be chained after any GA experiment.
+roleOrchestrator PLAN PlaybookCycleAfterGA evolved_vector context evolution_flags
+
+roleKickForge PLAN ForgeCore
+  CONSOLIDATE TAS-MEASURE UnifiedPlaybookSchema
+
+roleKickFlow PLAN FlowCore
+  CONSOLIDATE emit_cycle PlaybookEventEmitter
+
+roleKickGuard PLAN GuardCore
+  CONSOLIDATE Dima coherence_monitor PlaybookEventEmitter
+
+schema evolved_vector { values: number[], source_fitness: "humor_dna" | "tas_coherence", keys?: string[] }
+schema context { domain: string, somatic_valence?: string }
+schema evolution_flags { emit_full_cycle: bool, coherence_threshold: number }
+
+Stage1ForgeReconstructTAS:
+  roleKickForge EXTRACT evolved_vector context
+  LINK Stage1ForgeReconstructTAS, produces, ⫻data/tas
+
+Stage2ForgePurifyForCycle:
+  roleKickForge PURIFY ⫻data/tas policy_constraints
+  LINK Stage2ForgePurifyForCycle, produces, ⫻data/ptas
+
+Stage3GroundAnchor:
+  roleKickGuard SET Anchor ⫻data/ptas context
+  LINK Stage3GroundAnchor, produces, ⫻data/anchor
+
+Stage4MeasureCoherence:
+  roleKickForge MEASURE coherence ⫻data/ptas evolved_vector
+  LINK Stage4MeasureCoherence, produces, coherence_report
+
+Stage5KickGuardGate:
+  role Dima CHECK coherence_report
+  LINK Stage5KickGuardGate, produces, decision_token
+  IF decision_token != "proceed" THEN ⫻cmd/halt "Post-GA coherence or ethics failure"
+
+Stage6EmitAllPlaybookEvents:
+  roleKickGuard EMIT full_event_stream ⫻data/tas ⫻data/ptas ⫻data/anchor coherence_report
+  LINK Stage6EmitAllPlaybookEvents, produces, ⫻data/playbook_events
+  # Explicitly covers the 16 types: TAS_EXTRACTED, CONSENT_GRANT, ANCHOR_CREATED,
+  # PIPELINE_READY, RESONANCE_*, SIGNAL_TRANSMITTED, ARTIFACT_CREATED,
+  # COHERENCE_*, RESEQUENCE_*, NO_RESEQUENCE_NEEDED, CYCLE_SEALED
+
+Stage7SynthesizeCycle:
+  IF evolution_flags.emit_full_cycle THEN
+    roleKickFlow SYNTHESIZE ⫻data/tas ⫻data/ptas ⫻data/anchor ⫻data/playbook_events
+    LINK Stage7SynthesizeCycle, produces, ⫻playbook:cycle
+
+Stage8ReviewAndSeal:
+  role KickForge+KickFlow+KickGuard REVIEW ⫻playbook:cycle
+  LINK Stage8ReviewAndSeal, produces, sealed_cycle_artifact
+  LINK Stage8ReviewAndSeal, produces, final_output
+
+payload_flow:
+  evolved_vector → ⫻data/tas → ⫻data/ptas → ⫻data/anchor → ⫻data/playbook_events + ⫻playbook:cycle → sealed_cycle_artifact
+
+logic:
+  ⫻logic/if coherence_report.score >= evolution_flags.coherence_threshold THEN Stage6 ELSE halt
+  ⫻logic/loop while events incomplete DO re-emit
+  ⫻logic/error RECOVER "use_no_resequence_path" OR ⫻cmd/halt
+
+directives:
+  ⫻cmd/exec PlaybookCycleAfterGA
+  ⫻cmd/mode "Fluid"
+  ⫻cmd/halt "coherence|ethics"

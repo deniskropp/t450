@@ -34,6 +34,15 @@ integration: "GAlib concepts (GASimpleGA, 1DArrayGenome, roulette + tournament, 
 #   - core/humor_dna-*.kick
 #   - a new versioned HumorForge session state
 #   - an OCS ⫻data/var payload for dynamic weighting in a meta-playbook
+
+# === New Meta-Playbook examples in this directory (v2.1) ===
+# See also:
+#   tas_coherence_meta_playbook.kick   — Full TAS + GA + UnifiedPlaybookSchema + ⫻playbook:cycle
+#   meta_playbook_humor_dna_evolution.kick — HumorDNA GA wrapped in 3-agent Meta-Playbook
+#   playbook_cycle_after_ga.kick       — Post-GA synthesis of TAS/PTAS/Anchor + 16 PlaybookEvents
+#
+# These use the canonical KickLang Meta-Playbook 20-step scaffold (KickForge/KickFlow/KickGuard)
+# and are compatible with the global /kicklang-meta-playbook skill examples.
 #
 # Example emission (produced by kickga):
 # ⫻humor:dna:block

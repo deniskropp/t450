@@ -1,0 +1,115 @@
+# TAS Coherence Meta-Playbook for kickga + UnifiedPlaybookSchema
+# This is a full KickLang Meta-Playbook module (v2.1) specialized for
+# evolving TAS parameters via genetic algorithm and emitting canonical
+# PlaybookEvent streams + ⫻playbook:cycle artifacts.
+#
+# Usable with:
+#   - kickga (via create_ga_from_kick or direct loading of embedded ⫻ga:experiment)
+#   - Any OCS / meta-playbook orchestrator
+#   - The Python kickga.playbook_schema for typed emission
+#
+# Run the GA portion:
+#   python -m kickga.examples.evolve_humor_dna   # (Path C demonstrates similar)
+#
+# Or load the GA sub-spec with kickga.kick_bridge
+
+module<TASCoherenceMetaPlaybook> v2.1
+TITLE TAS Extraction + Coherence GA Evolution + Playbook Cycle Emission
+DESCRIPTION End-to-end Meta-Playbook that extracts a TAS, delegates coherence optimization to kickga GA (tas_coherence_fitness), grounds an Anchor, emits the 16 PlaybookEvents, and produces a complete ⫻playbook:cycle ready for OCS/KickGuard consumption.
+roleOrchestrator PLAN TASCoherenceMetaPlaybook user_objective domain_context evolution_flags
+
+roleKickForge PLAN ForgeCore
+  CONSOLIDATE GPTASe puTASe TAS-EXTRACT TAS-PURIFY TAS-VALIDATE TAS-MEASURE UnifiedPlaybookSchema
+
+roleKickFlow PLAN FlowCore
+  CONSOLIDATE Lyra FizzLaMetta TAS-SEQUENCE TAS-ALIGN TAS-DELEGATE kickga_evolver emit_cycle
+
+roleKickGuard PLAN GuardCore
+  CONSOLIDATE Dima SystemMonitor WePlan coherence_monitor PlaybookEventEmitter
+
+schema user_objective { raw_text: string, success_criteria: string[] }
+schema domain_context { domain: string, anchors: string[]? }
+schema evolution_flags { run_ga: bool, generations: number?, coherence_target: number, emit_events: bool, tas_keys?: string[] }
+
+# === 20-Stage Scaffold (abridged for kickga focus; full 20 steps available via FullMetaPlaybook) ===
+
+Stage1KickForgeExtract:
+  roleKickForge EXTRACT user_objective domain_context
+  LINK Stage1KickForgeExtract, produces, ⫻data/tas
+  LINK Stage1KickForgeExtract, hastrait, "atomic_decomposition_for_ga"
+
+Stage2KickForgePurify:
+  roleKickForge PURIFY ⫻data/tas policy_constraints
+  LINK Stage2KickForgePurify, produces, ⫻data/ptas
+
+Stage3KickFlowStructure:
+  roleKickFlow PLAN TASPipelineStructure ⫻data/ptas evolution_flags
+  LINK Stage3KickFlowStructure, produces, ⫻data/spec
+
+# Core GA delegation (kickga integration point)
+Stage4KickgaCoherenceEvolve:
+  IF evolution_flags.run_ga THEN
+    roleKickFlow DELEGATE kickga_evolve ⫻data/spec evolution_flags
+    LINK Stage4KickgaCoherenceEvolve, produces, evolved_tas_vector
+    LINK Stage4KickgaCoherenceEvolve, produces, ⫻data/ga_result
+    # The embedded GA spec can be extracted and fed to create_ga_from_kick()
+
+Stage5CoherenceMeasurement:
+  roleKickForge MEASURE coherence ⫻data/ptas evolved_tas_vector
+  LINK Stage5CoherenceMeasurement, produces, coherence_report
+
+Stage6EmitPlaybookEvents:
+  IF evolution_flags.emit_events THEN
+    roleKickGuard EMIT PlaybookEventStream ⫻data/tas ⫻data/ptas coherence_report evolved_tas_vector
+    LINK Stage6EmitPlaybookEvents, produces, ⫻data/playbook_events
+    # Produces: TAS_EXTRACTED, CONSENT_GRANT, ANCHOR_CREATED, COHERENCE_HIGH/LOW, CYCLE_SEALED, ...
+
+Stage7AnchorGrounding:
+  roleKickGuard SET Anchor ⫻data/ptas domain_context
+  LINK Stage7AnchorGrounding, produces, ⫻data/anchor
+
+Stage8KickGuardCoherenceGate:
+  role Dima CHECK coherence_report policy_profile
+  LINK Stage8KickGuardCoherenceGate, produces, decision_token
+  IF decision_token.coherence < evolution_flags.coherence_target THEN
+    ⫻cmd/halt "Coherence below target after GA evolution"
+
+Stage9FlowDelegatePipeline:
+  roleKickFlow PLAN PipelineDelegate ⫻data/spec ⫻data/anchor
+  LINK Stage9FlowDelegatePipeline, produces, ⫻data/state
+
+Stage10SynthesizeAndEmitCycle:
+  role Orchestrator SYNTHESIZE ⫻data/tas ⫻data/ptas ⫻data/anchor ⫻data/playbook_events
+  LINK Stage10SynthesizeAndEmitCycle, produces, ⫻data/insight
+  LINK Stage10SynthesizeAndEmitCycle, produces, ⫻playbook:cycle
+
+Stage11ReviewRefine:
+  role KickForge+KickFlow+KickGuard REVIEW ⫻data/insight ⫻data/spec
+  LINK Stage11ReviewRefine, produces, ⫻data/draft
+  LINK Stage11ReviewRefine, produces, final_tas_playbook_artifact
+
+# Embedded kickga-compatible GA experiment (can be parsed by load_kick_ga_spec)
+⫻ga:experiment
+id: EvolveTASCoherenceForMetaPlaybook
+genome: vector
+pop_size: 28
+generations: 48
+p_crossover: 0.86
+p_mutation: 0.022
+fitness: tas_coherence
+vector_length: 8
+tas_keys: [coherence_target, anchor_stability, consent_weight, resequence_tendency, ethical_threshold, somatic_valence, pipeline_efficiency, drift_tolerance]
+# bounds are normalized 0.35-0.98 in the fitness implementation
+
+payload_flow:
+  user_objective → ⫻data/tas → ⫻data/ptas → evolved_tas_vector + coherence_report → ⫻data/anchor + ⫻data/playbook_events → ⫻playbook:cycle → final_tas_playbook_artifact
+
+logic:
+  ⫻logic/if evolution_flags.run_ga THEN Stage4KickgaCoherenceEvolve ELSE direct_coherence_measurement
+  ⫻logic/loop while coherence_report.score < evolution_flags.coherence_target DO re-measure + gate
+  ⫻logic/error "drift_after_ga" RECOVER re-anchor via Stage7 OR ⫻cmd/halt
+
+directives:
+  ⫻cmd/exec TASCoherenceMetaPlaybook
+  ⫻cmd/mode "Fluid"
+  ⫻cmd/halt "coherence|ethics|ga_failure"

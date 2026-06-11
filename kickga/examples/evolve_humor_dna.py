@@ -187,6 +187,22 @@ vector_length: 14
 
     print("\n=== TAS wiring complete. Evolved parameters are now ready for OCS meta-playbook, KickGuard, EmbodiedPipe. ===")
 
+    # --- Path D: Load full Meta-Playbook .kick specs (new examples) ---
+    print("\n--- Path D: Load richer Meta-Playbook specs from kickga/examples/ ---")
+    print("These files contain full module<...> v2.1 definitions (KickForge/KickFlow/KickGuard)")
+    print("plus embedded ⫻ga:experiment blocks usable by the existing parser.")
+
+    try:
+        from pathlib import Path
+        meta_spec = Path(__file__).parent / "tas_coherence_meta_playbook.kick"
+        if meta_spec.exists():
+            ga_meta = create_ga_from_kick(meta_spec.read_text(), seed={"core_preferences": {}})
+            print(f"Loaded tas_coherence_meta_playbook.kick — would run with nGenerations={ga_meta.nGenerations}")
+            # Note: full module semantics (roles, stages, playbook events) are for higher-level orchestrators
+            # The GA sub-spec is still executable today.
+    except Exception as ex:
+        print(f"(Meta-Playbook spec loading demo skipped: {ex})")
+
 
 if __name__ == "__main__":
     main()
